@@ -1,0 +1,21 @@
+flickr_consumer_key: xxx
+flickr_consumer_secret: xxx
+flickr_access_token: xxx
+flickr_access_token_secret: xxx
+flickr_username: username
+include_instagram: false
+email_to: "you@example.com"
+email_from: "you@example.com"
+mailgun:
+  domain: "mail.example.com"
+  apikey: "xxx"
+compass:
+  baseurl: "https://compass.example.com"
+  token: xxx
+sync_folders:
+- folder: "/Users/username/Dropbox/Camera Uploads"
+  complete: "/Users/username/Dropbox/Camera Uploads/complete"
+  errors: "/Users/username/Dropbox/Camera Uploads/error"
+  photoset_id: "1234"
+  tags: 
+  - iphone

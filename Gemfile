@@ -1,0 +1,5 @@
+source 'https://rubygems.org'
+gem 'flickraw'
+gem 'exifr'
+gem 'mailgun-ruby', require: 'mailgun'
+gem 'httparty'
