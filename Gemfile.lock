@@ -33,6 +33,3 @@ DEPENDENCIES
   flickraw
   httparty
   mailgun-ruby
-
-BUNDLED WITH
-   1.11.2

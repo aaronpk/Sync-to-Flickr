@@ -1,23 +1,4 @@
-def init(env=ENV['RACK_ENV']); end
-Encoding.default_internal = 'UTF-8'
-require 'rubygems'
-require 'bundler/setup'
-require 'yaml'
-require './lib/base58'
-require './lib/notify'
-require './lib/photosync'
-Bundler.require
-
-SyncConfig = YAML.load_file('config.yml')
-
-FlickRaw.api_key = SyncConfig['flickr_consumer_key']
-FlickRaw.shared_secret = SyncConfig['flickr_consumer_secret']
-
-@flickr = FlickRaw::Flickr.new
-@flickr.access_token = SyncConfig['flickr_access_token']
-@flickr.access_secret = SyncConfig['flickr_access_token_secret']
-
-PhotoSync.flickr = @flickr
+require './env/'
 
 login = @flickr.test.login
 if login.username.nil?
@@ -33,6 +14,7 @@ photoset_id = nil
 # All photos added this batch will have a tag so they can be referenced easily
 batch = Time.now.strftime '%Y%m%d%H%M%S'
 photos_added = 0
+photo_urls = []
 
 
 SyncConfig['sync_folders'].each do |folder|
@@ -49,17 +31,18 @@ SyncConfig['sync_folders'].each do |folder|
   photos.sort!
 
   puts "Found #{photos.length} photos to sync"
-  puts photos.inspect
+  # puts photos.inspect
 
   last_timezone = nil
 
   photos.each do |filename|
 
+  	next if photos_added >= 100
+
     full_filename = "#{folder['folder']}/#{filename}"
-    completed_filename = "#{folder['complete']}/#{filename}"
     error_filename = "#{folder['errors']}/#{filename}"
 
-    puts "Beginning #{filename}"
+    puts "Beginning #{full_filename}"
 
     flickr_id = PhotoSync.upload({
       folder: folder,
@@ -125,18 +108,34 @@ SyncConfig['sync_folders'].each do |folder|
         end
       end
 
-      if location
+      if location && location['data'] && location['data']['geometry']
         puts "Setting photo location: #{location['data']['geometry']['coordinates'][1]}, #{location['data']['geometry']['coordinates'][0]}"
         PhotoSync.set_location flickr_id, location['data']['geometry']['coordinates'][1], location['data']['geometry']['coordinates'][0]
       end
     end
 
-    # Add the photo to the photoset
-    puts "Adding to photoset..."
-    response = @flickr.photosets.addPhoto :photoset_id => folder['photoset_id'], :photo_id => flickr_id
+    if folder['photoset_id']
+      # Add the photo to the photoset
+      puts "Adding to photoset..."
+      response = @flickr.photosets.addPhoto :photoset_id => folder['photoset_id'], :photo_id => flickr_id
+    end
 
     # Move the photo to the "complete" folder
+    if photo_date.nil?
+      dir_date = DateTime.now.strftime("%Y-%m-%d")
+    else
+      dir_date = DateTime.parse(photo_date).strftime("%Y-%m-%d")
+    end
+    dir = "#{folder['complete']}/#{dir_date}"
+    completed_filename = "#{dir}/#{filename}"
+    Dir.mkdir(dir) unless File.exists?(dir)
     File.rename full_filename, completed_filename
+    
+    info = @flickr.photos.getInfo(:photo_id => flickr_id)
+    photo_urls << FlickRaw.url_m(info)
+    
+    Notify.irc FlickRaw.url_m(info)
+    
     photos_added += 1
 
     puts "."
@@ -149,13 +148,22 @@ end
 
 if photos_added > 0
 
-	email_text = "#{photos_added} photos were just uploaded to your Flickr stream.\n\n"
-	email_text += "View them here: https://www.flickr.com/photos/#{SyncConfig['flickr_username']}/tags/sync%3Abatch%3D#{batch}"
+  batch_url = "https://www.flickr.com/photos/#{SyncConfig['flickr_username']}/tags/sync%3Abatch%3D#{batch}"
+
+	email_text = "#{photos_added} photo#{photos_added == 1 ? ' was' : 's were'} just uploaded to your Flickr stream.\n\n"
+	email_text += "#{batch_url}"
+
+  email_html = "<p>#{photos_added} photo#{photos_added == 1 ? ' was' : 's were'} were just uploaded to your Flickr stream.</p>\n"
+  email_html += "<p><a href=\"#{batch_url}\">View Photo#{photos_added == 1 ? '' : 's'}</a></p>\n"
+  
+  photo_urls.each do |u|
+    email_html += "<img src=\"#{u}\"> "
+  end
 
 	puts
 	puts email_text
 
-  Notify.email email_text
+  Notify.email email_text, email_html
 
 	puts "Done!"
 
