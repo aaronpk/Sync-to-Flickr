@@ -18,6 +18,8 @@ photo_urls = []
 
 
 SyncConfig['sync_folders'].each do |folder|
+  next if photos_added >= 100 
+
   puts "============================================="
   puts "Beginning Folder:"
   puts folder['folder']

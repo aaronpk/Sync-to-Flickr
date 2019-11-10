@@ -6,6 +6,7 @@ require 'yaml'
 require './lib/base58'
 require './lib/notify'
 require './lib/photosync'
+require 'exifr/jpeg'
 Bundler.require
 
 SyncConfig = YAML.load_file('config.yml')

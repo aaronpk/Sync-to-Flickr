@@ -3,11 +3,11 @@ class Notify
   def self.email(text, html=nil)
     mg = Mailgun::Client.new SyncConfig['mailgun']['apikey']
     obj = Mailgun::MessageBuilder.new
-    obj.set_from_address SyncConfig['email_from']
+    obj.from SyncConfig['email_from']
     obj.add_recipient :to, SyncConfig['email_to']
-    obj.set_subject "New photos uploaded"
-    obj.set_text_body text
-    obj.set_html_body(html) if html
+    obj.subject "New photos uploaded"
+    obj.body_text text
+    obj.body_html(html) if html
     mg.send_message SyncConfig['mailgun']['domain'], obj
   end
 
